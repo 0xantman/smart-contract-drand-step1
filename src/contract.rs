@@ -1,7 +1,4 @@
-use cosmwasm_std::{
-    attr, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
-    Response, StdError, StdResult, WasmMsg,
-};
+use cosmwasm_std::{attr, entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult, WasmMsg, SubMsg, ReplyOn, Reply, ContractResult, SubcallResponse};
 
 use crate::msg::{
     ConfigResponse, ExecuteMsg, GetRandomResponse, InstantiateMsg, LatestRandomResponse, QueryMsg,
@@ -11,6 +8,7 @@ use groupy::{CurveAffine, CurveProjective};
 use paired::bls12_381::{G2Affine, G2};
 use paired::{ExpandMsgXmd, HashToCurve};
 use sha2::{Digest, Sha256};
+use crate::error::ContractError;
 
 const DOMAIN: &[u8] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_";
 
@@ -69,11 +67,11 @@ fn verify_step1(round: u64, previous_signature: &[u8]) -> G2Affine {
     msg_to_curve(&msg)
 }
 
-fn encode_msg(msg: QueryMsg, address: String) -> StdResult<CosmosMsg> {
+fn encode_msg(msg: QueryMsg, address: String) -> StdResult<SubMsg> {
     Ok(WasmMsg::Execute {
         contract_addr: address,
         msg: to_binary(&msg)?,
-        send: vec![],
+        funds: vec![]
     }
     .into())
 }
@@ -106,9 +104,9 @@ pub fn add_random(
     let res = encode_msg(msg, contract_address.to_string())?;
 
     Ok(Response {
-        submessages: vec![],
         messages: vec![res],
         attributes: vec![],
+        events: vec![],
         data: None,
     })
 }
@@ -149,11 +147,25 @@ pub fn verify_call_back(
     };
 
     Ok(Response {
-        submessages: vec![],
         messages: vec![],
         attributes: vec![attr("isValidRandomness", "true")],
+        events: vec![],
         data: None,
     })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError>{
+    match msg.id {
+       _ => reply_operation(deps, env, msg.result)
+    }
+}
+
+pub fn reply_operation(_deps: DepsMut, _env: Env, res: ContractResult<SubcallResponse>) -> Result<Response, ContractError>{
+    match res {
+        ContractResult::Err(_) => Err(ContractError::InvalidSignature {}),
+        ContractResult::Ok(_) => { }
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
