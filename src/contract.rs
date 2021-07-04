@@ -197,6 +197,7 @@ fn query_get(deps: Deps, round: u64) -> StdResult<GetRandomResponse> {
 }
 // Query latest beacon
 fn query_latest(deps: Deps) -> StdResult<LatestRandomResponse> {
+
     let mut iter = BEACONS.range(deps.storage, None, None, Order::Descending);
     let (_, value) = iter
         .next()

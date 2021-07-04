@@ -728,7 +728,7 @@ dependencies = [
 
 [[package]]
 name = "terrand"
-version = "2.0.0"
+version = "3.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std 0.15.0",
